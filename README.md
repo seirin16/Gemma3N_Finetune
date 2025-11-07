@@ -1,6 +1,6 @@
 # Gemma-3N Fine-Tuning for Multimodal Phishing Detection
 
-This repository contains a Google Colab notebook for fine-tuning the Gemma-3N model (specifically the `unsloth/gemma-3n-e4b-it` variant) for multimodal phishing website detection. The notebook demonstrates how to adapt a vision-language model (VLM) using parameter-efficient techniques like **LoRA (Low-Rank Adaptation)** via the **Unsloth** library. The model is trained on a balanced dataset of 5,000 samples (2,500 phishing and 2,500 legitimate websites), incorporating URLs, truncated HTML extracts, and screenshots as inputs.
+This repository contains Google Colab notebooks for fine-tuning and evaluating the Gemma-3N model (specifically the `unsloth/gemma-3n-e4b-it` variant) for multimodal phishing website detection. The project demonstrates how to adapt a vision-language model (VLM) using parameter-efficient techniques like **LoRA (Low-Rank Adaptation)** via the **Unsloth** library.
 
 The goal is to enhance the model's ability to classify websites as "Phishing" or "Legitimate" by integrating textual and visual cues, achieving significant improvements in recall and F1-score compared to zero-shot performance. This work is part of a research study on extending benchmarks for multimodal LLMs in cybersecurity.
 
@@ -11,8 +11,8 @@ The goal is to enhance the model's ability to classify websites as "Phishing" or
 * [Overview](#-overview)
 * [Dataset](#-dataset)
 * [Requirements](#-requirements)
-* [Setup and Installation](#-setup-and-installation)
-* [Usage](#-usage)
+* [Notebooks in this Repository](#-notebooks-in-this-repository)
+* [Setup and Usage Workflow](#-setup-and-usage-workflow)
 * [Training Details](#-training-details)
 * [Model Saving and Deployment](#-model-saving-and-deployment)
 * [Results](#-results)
@@ -24,7 +24,7 @@ The goal is to enhance the model's ability to classify websites as "Phishing" or
 
 ## 🚀 Overview
 
-Gemma-3N is a lightweight (~4B parameters) multimodal LLM from Google, capable of processing text and images. This notebook fine-tunes it for phishing detection, where the model analyzes:
+Gemma-3N is a lightweight (~4B parameters) multimodal LLM from Google, capable of processing text and images. This project fine-tunes it for phishing detection, where the model analyzes:
 
 * **URL:** For lexical patterns like typosquatting.
 * **HTML Extract:** Truncated to 5,000 characters for structural anomalies (e.g., suspicious scripts).
@@ -48,42 +48,60 @@ The fine-tuning uses **Supervised Fine-Tuning (SFT)** with a conversation-style 
 ## 🛠️ Requirements
 
 * Google Colab account (free tier with GPU access).
-* **Libraries** (installed in the notebook):
+* **Libraries** (installed in the notebooks):
     * `unsloth`: For efficient fine-tuning.
     * `transformers`, `datasets`, `peft`, `trl`: For model handling and training.
     * `bitsandbytes`: For quantization.
 * **Hardware:** NVIDIA T4 or better GPU (available in Colab).
 
-## ⚙️ Setup and Installation
+## 📓 Notebooks in this Repository
 
-1.  **Open the notebook in Google Colab:** `Gemma3N_Finetune.ipynb` (download from this repo and upload to Colab).
-2.  **Mount Google Drive:** Run the cell to connect your Drive for saving models/datasets.
-3.  **Install dependencies:** The notebook includes cells to install Unsloth and other libraries.
-4.  **Load the dataset:** Use Hugging Face's `datasets` library to load the phishing dataset.
+This repository provides three separate notebooks for a clear workflow:
 
-## ▶️ Usage
+1.  **`Gemma3N.ipynb` (Baseline Evaluation)**
+    * **Purpose:** Evaluates the "zero-shot" performance of the base `unsloth/gemma-3n-e4b-it` model *before* any fine-tuning. This is useful for establishing a performance baseline.
+    * **Note:** This notebook *does not* perform any training.
 
-1.  **Prepare the Dataset:**
-    * Load the CSV from Hugging Face or local path.
-    * Apply the conversion function to format samples as conversations (user: instruction + URL + HTML + image; assistant: label).
-2.  **Load the Model:**
-    * Use Unsloth to load the quantized Gemma-3N instruct variant (4-bit for memory efficiency).
-3.  **Fine-Tune:**
-    * Run the trainer configuration cell.
-    * Training takes ~4-6 hours on T4 GPU.
-4.  **Evaluate:**
-    * Test on a held-out set using the same metrics (precision, recall, F1, accuracy, normalized cost).
-5.  **Save the Model:**
-    * The notebook saves the LoRA adapters to Google Drive. Merge with the base model for full deployment.
+2.  **`Gemma3N_Finetune.ipynb` (Training)**
+    * **Purpose:** This is the main notebook for performing Supervised Fine-Tuning (SFT) using LoRA.
+    * **Process:** It loads the dataset, prepares the model, runs the training process (approx. 4-6 hours on a T4 GPU), and saves the resulting LoRA adapters to Google Drive.
 
-For step-by-step execution, follow the notebook cells in order.
+3.  **`Gemma3N_AfterFinetune.ipynb` (Post-Finetune Evaluation)**
+    * **Purpose:** Loads the base model and merges it with the trained LoRA adapters saved from the previous step.
+    * **Process:** It then runs the same evaluation dataset to demonstrate the significant performance improvement *after* fine-tuning.
+
+## ⚙️ Setup and Usage Workflow
+
+Follow these steps to reproduce the results.
+
+### Step 1: (Optional) Run Baseline Evaluation
+
+1.  Open `Gemma3N.ipynb` in Google Colab.
+2.  Run all cells to evaluate the zero-shot performance of the base Gemma-3N model. This shows you how the model performs *without* any training on the phishing dataset.
+
+### Step 2: Run Fine-Tuning
+
+1.  Open `Gemma3N_Finetune.ipynb` in Google Colab.
+2.  **Mount Google Drive:** Run the cell to connect your Drive. This is **required** to save the trained model adapters.
+3.  **Install Dependencies:** Run the installation cells for Unsloth and other libraries.
+4.  **Load Dataset:** Load the `seirin16/Dataset_Phising` dataset from Hugging Face.
+5.  **Run Training:** Execute the `SFTTrainer` cell. This process will take approximately 4-6 hours.
+6.  **Verify:** At the end, the LoRA adapters will be saved to your Google Drive (e.g., in `/content/drive/MyDrive/Colab Notebooks/gemma3n-it-phishing-lora`).
+
+### Step 3: Run Post-Training Evaluation
+
+1.  Open `Gemma3N_AfterFinetune.ipynb` in Google Colab.
+2.  **Mount Google Drive:** Connect to the same Google Drive account used in Step 2.
+3.  **Install Dependencies:** Run the installation cells.
+4.  **Load Model:** The notebook will load the base Gemma-3N model and automatically merge the LoRA adapters from the Google Drive path you specified.
+5.  **Evaluate:** Run the evaluation cells to see the final performance of your fine-tuned model. You can compare these results directly with the baseline from Step 1.
 
 ## 📈 Training Details
 
 * **Model Variant:** `unsloth/gemma-3n-e4b-it` (instruct-tuned, ~4B parameters, multimodal with text + image input).
 * **Fine-Tuning Method:** LoRA via Unsloth for parameter efficiency.
 * **Input Format:** Multimodal conversations with direct classification instructions to focus on binary output.
-* **Hyperparameters:**
+* **Hyperparameters (from `Gemma3N_Finetune.ipynb`):**
     * **Epochs:** 2
     * **Learning Rate:** 2e-4 (cosine scheduler)
     * **Batch Size:** Effective 4 (per-device 1 + 4 accumulation steps)
@@ -97,8 +115,8 @@ For step-by-step execution, follow the notebook cells in order.
 
 ## 💾 Model Saving and Deployment
 
-* **Saved Artifacts:** LoRA adapters and processor saved to `/content/drive/MyDrive/Colab Notebooks/gemma3n-it-phishing-lora`.
-* **Deployment:** Merge LoRA with base model using Unsloth/Peft. Deploy via Hugging Face or local inference for phishing checks in browsers/extensions.
+* **Saved Artifacts:** LoRA adapters and processor saved to `/content/drive/MyDrive/Colab Notebooks/gemma3n-it-phishing-lora` (as configured in the training notebook).
+* **Deployment:** `Gemma3N_AfterFinetune.ipynb` shows how to merge the LoRA adapters with the base model. This merged model can be saved and deployed via Hugging Face or used for local inference in phishing detection tools.
 
 ## 🏆 Results
 
@@ -122,6 +140,6 @@ If you use this code or model, please cite:
 @article{placeholder,
   title={Extending the Benchmark: A Performance and Fine-Tuning Study of the Gemma 3N Large Language Model},
   author={Álvaro López Fueyo},
-  year={2024},
+  year={2025},
   journal={Journal or Conference Name}
 }
